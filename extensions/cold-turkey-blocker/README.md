@@ -100,6 +100,21 @@ The extension uses `execFile(executable, args)` rather than a shell. Block names
 
 ## Development
 
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the extension locally in Raycast development mode:
+
+```bash
+npm run setup -- YOUR_RAYCAST_USERNAME
+npm run dev
+```
+
+Run the local quality checks:
+
 ```bash
 npm test
 npm run typecheck
@@ -107,7 +122,101 @@ npm run lint
 npm run build
 ```
 
-`npm run lint` validates the Raycast username and manifest against Raycast’s services, so it needs internet access and a valid author value. The source itself can be checked with `npx eslint .`.
+`npm run lint` runs Raycast’s extension validation, including manifest and author/username checks against Raycast’s services. It therefore requires internet access and a valid `author` value in `package.json`.
+
+For source-only linting without Raycast service validation, use:
+
+```bash
+npx eslint .
+```
+
+### Cold Turkey CLI reports
+
+The project includes a safe Cold Turkey CLI behaviour-report generator. It records raw CLI behaviour, including stdout, stderr, exit code, timing, and output hashes. It does not infer semantic success or failure from Cold Turkey’s undocumented output format.
+
+Generated reports are written to:
+
+```bash
+.cold-turkey-reports/
+```
+
+This directory should remain gitignored.
+
+Common report commands:
+
+```bash
+npm run ct:report
+npm run ct:report:status
+npm run ct:report:lab
+npm run ct:report:lab-full
+```
+
+Recommended full safe report:
+
+```bash
+npm run ct:report:lab-full
+```
+
+The report generator supports these options:
+
+```bash
+node scripts/generate-cold-turkey-report.mjs [options]
+```
+
+Available options:
+
+```text
+--lab
+  Enable lab mode. Uses a harmless website/app test block for controlled command snapshots.
+
+--include-device-blocks
+  In lab mode, also create test device-block definitions. Device blocks are never started.
+
+--include-password-lock
+  In lab mode, test password lock/unlock behaviour on the harmless website/app test block only.
+
+--status-all
+  Run read-only status snapshots for all blocks returned by -list-blocks.
+
+--status-block "Block Name"
+  Run a read-only status snapshot for a specific existing block. Can be used multiple times.
+
+--ct-path "/path/to/Cold Turkey Blocker"
+  Override the detected Cold Turkey executable path.
+
+--out ./path
+  Override the report output directory. Defaults to ./.cold-turkey-reports/.
+
+--test-block "Name"
+  Override the harmless website/app test block name. Defaults to Raycast_Report_Test.
+
+--test-password "password"
+  Override the password used for optional password-lock testing. The value must avoid spaces and quotes.
+
+--test-device-block "Name"
+  Override the standard test device-block name.
+
+--test-signout-device-block "Name"
+  Override the sign-out test device-block name.
+
+--test-shutdown-device-block "Name"
+  Override the shut-down test device-block name.
+```
+
+You can also override the Cold Turkey executable path with an environment variable:
+
+```bash
+CT_BLOCKER_PATH="/custom/path/to/Cold Turkey Blocker" npm run ct:report
+```
+
+Safety notes:
+
+* Default report mode only runs read-only commands.
+* Lab mode modifies only controlled test blocks.
+* Device block creation is optional and safe because created device blocks are never started.
+* The report generator never starts device blocks.
+* The report generator never runs timed locks, random-text locks, sign-out actions, or shutdown actions.
+* Repeated lab runs may leave test block definitions in Cold Turkey because the CLI does not expose a delete-block command.
 
 ## License
 
