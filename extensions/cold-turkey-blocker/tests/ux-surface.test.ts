@@ -99,6 +99,21 @@ test("makes the unlocked start explicit in both fast and complete paths", () => 
   assert.match(source, /title="Use Saved Settings"/);
 });
 
+test("requests a stop password only after Cold Turkey reports that it is required", () => {
+  const source = readFileSync("src/components/stop-password-form.tsx", "utf8");
+
+  assert.doesNotMatch(manageBlocksSource, /title=.*Stop with Password/);
+  assert.match(
+    manageBlocksSource,
+    /classifyStopPasswordError\(cliErrorText\(error\)\)/,
+  );
+  assert.match(manageBlocksSource, /"password-required"/);
+  assert.match(manageBlocksSource, /push\(\s*<StopPasswordForm/);
+  assert.match(source, /navigationTitle="Password Required"/);
+  assert.match(source, /"invalid-password"/);
+  assert.match(source, /Cold Turkey rejected this password/);
+});
+
 test("lets website blocks be created with optional initial contents", () => {
   const source = readFileSync("src/components/create-block-form.tsx", "utf8");
 

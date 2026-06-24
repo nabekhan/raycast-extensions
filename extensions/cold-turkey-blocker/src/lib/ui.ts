@@ -37,6 +37,7 @@ export interface ExecuteCliOptions {
   successMessage?: string;
   verification?: CliVerification;
   onSuccess?: (result: CliExecutionResult) => void | Promise<void>;
+  onError?: (error: unknown) => boolean | void | Promise<boolean | void>;
 }
 
 export async function executeCli(options: ExecuteCliOptions): Promise<CliExecutionResult | undefined> {
@@ -67,7 +68,12 @@ export async function executeCli(options: ExecuteCliOptions): Promise<CliExecuti
     await options.onSuccess?.(execution);
     return execution;
   } catch (error) {
-    applyCliFailureToast(toast, error);
+    const handled = (await options.onError?.(error)) === true;
+    if (handled) {
+      await toast.hide();
+    } else {
+      applyCliFailureToast(toast, error);
+    }
     return undefined;
   }
 }
@@ -93,12 +99,16 @@ export function applyCliFailureToast(
 }
 
 export function formatCliError(error: unknown, maxLength = 320): string {
+  const message = cliErrorText(error);
+  return compactCliOutput(message, maxLength) ?? message;
+}
+
+export function cliErrorText(error: unknown): string {
   if (error instanceof ColdTurkeyCliError) {
-    const message = error.kind === "verification-failed" ? error.message : error.output || error.message;
-    return compactCliOutput(message, maxLength) ?? error.message;
+    return error.kind === "verification-failed" ? error.message : error.output || error.message;
   }
-  if (error instanceof Error) return compactCliOutput(error.message, maxLength) ?? error.name;
-  return compactCliOutput(String(error), maxLength) ?? "Unknown error";
+  if (error instanceof Error) return error.message || error.name;
+  return String(error) || "Unknown error";
 }
 
 export async function confirmPotentialLock(

@@ -1,4 +1,13 @@
-import { Action, ActionPanel, Color, Icon, Keyboard, List, openExtensionPreferences } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Color,
+  Icon,
+  Keyboard,
+  List,
+  openExtensionPreferences,
+  useNavigation,
+} from "@raycast/api";
 import { useMemo } from "react";
 import CliDiagnosticsCommand from "./cli-diagnostics";
 import { AddEntryForm } from "./components/add-entry-form";
@@ -10,8 +19,8 @@ import { useBlocksWithStatus } from "./hooks/use-blocks";
 import { getBlockMenuPolicy, type BlockPrimaryAction, type BlockSecondaryAction } from "./lib/block-menu";
 import { buildStartArgs, buildStopArgs } from "./lib/command-builders";
 import type { BlockInfo } from "./lib/cold-turkey";
-import { blockKindLabel, compactCliOutput, type BlockState } from "./lib/cli-output";
-import { executeCli, formatCliError } from "./lib/ui";
+import { blockKindLabel, classifyStopPasswordError, compactCliOutput, type BlockState } from "./lib/cli-output";
+import { cliErrorText, executeCli, formatCliError } from "./lib/ui";
 
 type Revalidate = () => void | Promise<unknown>;
 
@@ -111,6 +120,7 @@ export default function ManageBlocksCommand() {
 }
 
 function BlockListItem({ block, revalidate }: { block: BlockInfo; revalidate: Revalidate }) {
+  const { push } = useNavigation();
   const presentation = statusPresentation(block.state);
   const policy = getBlockMenuPolicy(block);
   const isDevice = block.kind === "device";
@@ -133,6 +143,12 @@ function BlockListItem({ block, revalidate }: { block: BlockInfo; revalidate: Re
       successTitle: isDevice ? `Disabled schedule for ${block.name}` : `Stopped ${block.name}`,
       verification: { type: "state", block, expectedState: "disabled" },
       onSuccess: refresh,
+      onError: (error) => {
+        if (classifyStopPasswordError(cliErrorText(error)) !== "password-required") return false;
+
+        push(<StopPasswordForm blockName={block.name} blockKind={block.kind} onSuccess={refresh} />);
+        return true;
+      },
     });
   }
 
@@ -169,7 +185,6 @@ function BlockListItem({ block, revalidate }: { block: BlockInfo; revalidate: Re
             {policy.secondaryAction
               ? blockSecondaryAction(policy.secondaryAction, {
                   block,
-                  isDevice,
                   revalidate: refresh,
                 })
               : null}
@@ -248,7 +263,6 @@ function blockPrimaryAction(action: BlockPrimaryAction, context: PrimaryActionCo
 
 interface SecondaryActionContext {
   block: BlockInfo;
-  isDevice: boolean;
   revalidate: () => Promise<void>;
 }
 
@@ -261,20 +275,6 @@ function blockSecondaryAction(action: BlockSecondaryAction, context: SecondaryAc
           icon={Icon.Lock}
           target={
             <StartBlockForm
-              blockName={context.block.name}
-              blockKind={context.block.kind}
-              onSuccess={context.revalidate}
-            />
-          }
-        />
-      );
-    case "stop-with-password":
-      return (
-        <Action.Push
-          title={context.isDevice ? "Disable with Password…" : "Stop with Password…"}
-          icon={Icon.Key}
-          target={
-            <StopPasswordForm
               blockName={context.block.name}
               blockKind={context.block.kind}
               onSuccess={context.revalidate}

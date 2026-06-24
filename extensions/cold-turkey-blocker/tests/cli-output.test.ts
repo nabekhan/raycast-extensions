@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  classifyStopPasswordError,
   cleanCliOutput,
   compactCliOutput,
   decodeCliOutput,
@@ -111,6 +112,23 @@ test("recognizes semantic CLI errors even if a process exits successfully", () =
     "Error: A lock is already set for this block.",
   );
   assert.equal(looksLikeCliError("Enabled"), false);
+});
+
+test("classifies password-stop failures reported by Cold Turkey", () => {
+  assert.equal(
+    classifyStopPasswordError(
+      "Error: Invalid number of parameters to unlock password lock.",
+    ),
+    "password-required",
+  );
+  assert.equal(
+    classifyStopPasswordError("=> Error: Invalid password provided."),
+    "invalid-password",
+  );
+  assert.equal(
+    classifyStopPasswordError("Error: This block cannot be stopped yet."),
+    undefined,
+  );
 });
 
 test("parses common enabled and disabled status formats", () => {

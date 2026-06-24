@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { getBlockMenuPolicy } from "../src/lib/block-menu";
 
-test("uses one primary and one exceptional action for each known state", () => {
+test("uses one primary action and only state-specific secondary actions", () => {
   assert.deepEqual(
     getBlockMenuPolicy({ state: "disabled", kind: "website-app" }),
     {
@@ -17,7 +17,6 @@ test("uses one primary and one exceptional action for each known state", () => {
     getBlockMenuPolicy({ state: "enabled", kind: "website-app" }),
     {
       primaryAction: "stop",
-      secondaryAction: "stop-with-password",
       showWebsiteEditing: true,
       showBreakControls: true,
     },
@@ -25,7 +24,6 @@ test("uses one primary and one exceptional action for each known state", () => {
 
   assert.deepEqual(getBlockMenuPolicy({ state: "enabled", kind: "device" }), {
     primaryAction: "stop",
-    secondaryAction: "stop-with-password",
     showWebsiteEditing: false,
     showBreakControls: false,
   });

@@ -2,8 +2,8 @@ import { Action, ActionPanel, Form, Icon, useNavigation } from "@raycast/api";
 import { useState } from "react";
 import { buildStopArgs } from "../lib/command-builders";
 import type { BlockDescriptor } from "../lib/cold-turkey";
-import type { BlockKind } from "../lib/cli-output";
-import { executeCli } from "../lib/ui";
+import { classifyStopPasswordError, type BlockKind } from "../lib/cli-output";
+import { cliErrorText, executeCli } from "../lib/ui";
 
 interface StopPasswordFormProps {
   blockName: string;
@@ -15,6 +15,8 @@ export function StopPasswordForm({ blockName, blockKind, onSuccess }: StopPasswo
   const { pop } = useNavigation();
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string>();
+  const isDevice = blockKind === "device";
+  const actionTitle = isDevice ? "Disable Device Block Schedule" : "Stop Block";
 
   async function handleSubmit() {
     setPasswordError(undefined);
@@ -27,14 +29,19 @@ export function StopPasswordForm({ blockName, blockKind, onSuccess }: StopPasswo
     const descriptor: BlockDescriptor = { name: blockName, kind: blockKind };
     const result = await executeCli({
       args: buildStopArgs(blockName, password),
-      workingTitle: `Stopping ${blockName}…`,
-      successTitle: `Stopped ${blockName}`,
+      workingTitle: isDevice ? `Disabling schedule for ${blockName}…` : `Stopping ${blockName}…`,
+      successTitle: isDevice ? `Disabled schedule for ${blockName}` : `Stopped ${blockName}`,
       verification: {
         type: "state",
         block: descriptor,
         expectedState: "disabled",
       },
       onSuccess: () => onSuccess?.(),
+      onError: (error) => {
+        if (classifyStopPasswordError(cliErrorText(error)) !== "invalid-password") return false;
+        setPasswordError("Cold Turkey rejected this password.");
+        return true;
+      },
     });
 
     if (result) pop();
@@ -42,17 +49,22 @@ export function StopPasswordForm({ blockName, blockKind, onSuccess }: StopPasswo
 
   return (
     <Form
-      navigationTitle="Stop with Password"
+      navigationTitle="Password Required"
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Stop with Password" icon={Icon.Stop} onSubmit={handleSubmit} />
+          <Action.SubmitForm title={actionTitle} icon={Icon.Stop} onSubmit={handleSubmit} />
         </ActionPanel>
       }
     >
       <Form.Description title="Block" text={blockName} />
+      <Form.Description
+        title="Password Required"
+        text="Cold Turkey reported that this block is protected by a password lock. Enter its password to continue."
+      />
       <Form.PasswordField
         id="password"
         title="Block Password"
+        autoFocus
         value={password}
         onChange={(value) => {
           setPassword(value);

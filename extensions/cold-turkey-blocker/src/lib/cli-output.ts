@@ -1,5 +1,6 @@
 export type BlockState = "enabled" | "disabled" | "unknown";
 export type BlockKind = "website-app" | "device" | "unknown";
+export type StopPasswordError = "password-required" | "invalid-password";
 
 export interface ParsedBlock {
   name: string;
@@ -64,6 +65,20 @@ export function extractCliError(value: string): string | undefined {
     .map(stripDiagnosticPrefix)
     .find((entry) => /^error\s*:/i.test(entry.trim()));
   return line?.trim();
+}
+
+export function classifyStopPasswordError(value: string): StopPasswordError | undefined {
+  const output = cleanCliOutput(value);
+
+  if (/\binvalid\s+number\s+of\s+parameters\s+to\s+unlock\s+(?:a\s+)?password\s+lock\b/i.test(output)) {
+    return "password-required";
+  }
+
+  if (/\binvalid\s+password(?:\s+provided)?\b/i.test(output)) {
+    return "invalid-password";
+  }
+
+  return undefined;
 }
 
 export function parseBlockList(value: string): ParsedBlock[] {

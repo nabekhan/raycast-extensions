@@ -13,8 +13,8 @@ The former **Start Block**, **Add to Block**, **Create Block**, and **Control Br
 
 **Manage Blocks** is optimized around one selected block:
 
-- **Enter** explicitly **starts unlocked** (or enables a device schedule with no lock), stops an enabled block, or refreshes a block whose status is unknown.
-- **Command–Enter** opens **Start Options** for a disabled block, **Stop with Password** for an enabled block, or read-only **CLI Diagnostics** when status is unknown.
+- **Enter** explicitly **starts unlocked** (or enables a device schedule with no lock), attempts to stop an enabled block, or refreshes a block whose status is unknown. When Cold Turkey reports that stopping requires a password, the extension opens the password form automatically.
+- **Command–Enter** opens **Start Options** for a disabled block or read-only **CLI Diagnostics** when status is unknown. Enabled blocks no longer expose a separate password-stop action.
 - **Start Options** is a complete form for **Start Unlocked (No Lock)**, saved settings, timed lock, password lock, or random-text lock. The unlocked choice is intentionally duplicated here so the form never hides a supported start mode.
 - **Add Websites or Exceptions** is one form with a dropdown for the website list or exception list.
 - **Control Break** is one form with a dropdown for starting or stopping the supported break workflows.
@@ -52,7 +52,8 @@ Cold Turkey mutation commands commonly return no text when successful. The exten
 
 - CLI processes are serialized so status probes and mutations cannot overlap.
 - `-list-blocks` is parsed into Website & App and Device sections; section headings are never queried as block names.
-- Start, stop, and password-stop actions poll `-status` until the expected state is confirmed.
+- Start, stop, and password-assisted stop actions poll `-status` until the expected state is confirmed.
+- A normal `-stop` is always attempted first. The password form appears only for Cold Turkey's password-lock parameter error, and an incorrect password is reported inline without closing the form.
 - Creation is confirmed by polling `-list-blocks` before any optional initial entries are added.
 - Initial website and exception entries are added sequentially after creation; exact duplicates and blank lines are ignored. A partial failure identifies the first failed entry and directs the user to retry from **Add Websites or Exceptions**.
 - Output beginning with `Error:` is treated as a failure even if the native process happens to return exit code 0.
