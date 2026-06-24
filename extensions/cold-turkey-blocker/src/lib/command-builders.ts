@@ -34,10 +34,6 @@ export function buildStopArgs(blockName: string, password?: string): string[] {
   return password === undefined ? args : [...args, "-password", requirePassword(password)];
 }
 
-export function buildToggleArgs(blockName: string): string[] {
-  return ["-toggle", requireBlockName(blockName)];
-}
-
 export function buildStatusArgs(blockName: string): string[] {
   return ["-status", requireBlockName(blockName)];
 }

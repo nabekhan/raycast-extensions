@@ -2,8 +2,8 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "cold-turkey-blocker",
   "title": "Cold Turkey Blocker",
-  "version": "1.1.0",
-  "description": "Manage Cold Turkey Blocker blocks, locks, websites, device blocks, and breaks from Raycast.",
+  "version": "1.3.2",
+  "description": "Manage Cold Turkey blocks, create them with optional initial websites and exceptions, and control starts, locks, device schedules, and breaks.",
   "icon": "extension-icon.png",
   "author": "nabecite",
   "license": "MIT",
@@ -26,36 +26,22 @@
       "name": "manage-blocks",
       "title": "Manage Blocks",
       "subtitle": "Cold Turkey Blocker",
-      "description": "List typed blocks and verify start, stop, toggle, lock, edit, or break actions.",
-      "mode": "view"
-    },
-    {
-      "name": "start-block",
-      "title": "Start Block",
-      "subtitle": "Cold Turkey Blocker",
-      "description": "Start a block unlocked, as configured, or with a timed, password, or random-text lock.",
-      "mode": "view"
-    },
-    {
-      "name": "add-entry",
-      "title": "Add Website or Exception",
-      "subtitle": "Cold Turkey Blocker",
-      "description": "Add one or more website patterns or exceptions to an existing block.",
-      "mode": "view"
-    },
-    {
-      "name": "create-block",
-      "title": "Create Block",
-      "subtitle": "Cold Turkey Blocker",
-      "description": "Create a website and app block or a device block.",
-      "mode": "view"
-    },
-    {
-      "name": "control-break",
-      "title": "Control Break",
-      "subtitle": "Cold Turkey Blocker",
-      "description": "Start or stop delay and random-text breaks.",
-      "mode": "view"
+      "description": "Search blocks and start unlocked, stop, lock, edit, create with optional contents, or control breaks from one contextual interface.",
+      "mode": "view",
+      "keywords": [
+        "start",
+        "stop",
+        "unlocked",
+        "lock",
+        "password",
+        "break",
+        "website",
+        "exception",
+        "add",
+        "create",
+        "device",
+        "schedule"
+      ]
     },
     {
       "name": "cli-diagnostics",

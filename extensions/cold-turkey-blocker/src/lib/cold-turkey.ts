@@ -144,7 +144,11 @@ export async function listBlocks(): Promise<BlockDescriptor[]> {
   if (looksLikeHelpOutput(result.output)) {
     throw new ColdTurkeyCliError(
       "Cold Turkey returned CLI help instead of a block list. Update Blocker to a version that supports -list-blocks.",
-      { kind: "unparseable-output", output: result.output, executablePath: getExecutablePath() },
+      {
+        kind: "unparseable-output",
+        output: result.output,
+        executablePath: getExecutablePath(),
+      },
     );
   }
 
@@ -191,7 +195,11 @@ export async function getBlockStatusWithRetry(
   const descriptor: BlockDescriptor = typeof block === "string" ? { name: block, kind: "unknown" } : block;
   const attempts = Math.max(1, options.attempts ?? 3);
   const initialDelayMs = Math.max(0, options.initialDelayMs ?? 0);
-  let last: BlockInfo = { ...descriptor, state: "unknown", rawStatus: "No status response." };
+  let last: BlockInfo = {
+    ...descriptor,
+    state: "unknown",
+    rawStatus: "No status response.",
+  };
 
   if (initialDelayMs > 0) await sleep(initialDelayMs);
 
@@ -233,7 +241,11 @@ export async function waitForBlockState(
   const descriptor: BlockDescriptor = typeof block === "string" ? { name: block, kind: "unknown" } : block;
   const attempts = Math.max(1, options.attempts ?? 6);
   const initialDelayMs = Math.max(0, options.initialDelayMs ?? 120);
-  let last: BlockInfo = { ...descriptor, state: "unknown", rawStatus: "Status not checked." };
+  let last: BlockInfo = {
+    ...descriptor,
+    state: "unknown",
+    rawStatus: "Status not checked.",
+  };
 
   if (initialDelayMs > 0) await sleep(initialDelayMs);
 
@@ -267,7 +279,11 @@ export async function waitForKnownBlockState(
   const descriptor: BlockDescriptor = typeof block === "string" ? { name: block, kind: "unknown" } : block;
   const attempts = Math.max(1, options.attempts ?? 6);
   const initialDelayMs = Math.max(0, options.initialDelayMs ?? 120);
-  let last: BlockInfo = { ...descriptor, state: "unknown", rawStatus: "Status not checked." };
+  let last: BlockInfo = {
+    ...descriptor,
+    state: "unknown",
+    rawStatus: "Status not checked.",
+  };
 
   if (initialDelayMs > 0) await sleep(initialDelayMs);
 
@@ -357,7 +373,12 @@ async function executeColdTurkey(args: string[]): Promise<CliResult> {
             );
             return;
           }
-          resolve({ stdout: normalizedStdout, stderr: normalizedStderr, output, durationMs });
+          resolve({
+            stdout: normalizedStdout,
+            stderr: normalizedStderr,
+            output,
+            durationMs,
+          });
           return;
         }
 

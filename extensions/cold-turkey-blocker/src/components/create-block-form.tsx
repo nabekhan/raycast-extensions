@@ -1,23 +1,38 @@
-import { Action, ActionPanel, Form, Icon, openExtensionPreferences, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, Form, Icon, Toast, showToast, useNavigation } from "@raycast/api";
 import { useState } from "react";
-import { buildCreateBlockArgs, type BlockCreationKind } from "../lib/command-builders";
-import { listBlocks } from "../lib/cold-turkey";
+import { buildAddEntryArgs, buildCreateBlockArgs, type BlockCreationKind } from "../lib/command-builders";
+import { listBlocks, runColdTurkey, waitForBlockPresence } from "../lib/cold-turkey";
 import type { BlockKind } from "../lib/cli-output";
-import { executeCli, formatCliError } from "../lib/ui";
+import { initialBlockEntries, summarizeEntryCounts, type BlockEntryInput } from "../lib/entries";
+import { applyCliFailureToast, formatCliError } from "../lib/ui";
 
 interface CreateBlockFormProps {
   onSuccess?: () => void | Promise<void>;
+}
+
+interface EntryFailure extends BlockEntryInput {
+  error: unknown;
 }
 
 export function CreateBlockForm({ onSuccess }: CreateBlockFormProps) {
   const { pop } = useNavigation();
   const [name, setName] = useState("");
   const [kind, setKind] = useState<BlockCreationKind>("website-app");
+  const [websitesText, setWebsitesText] = useState("");
+  const [exceptionsText, setExceptionsText] = useState("");
   const [nameError, setNameError] = useState<string>();
+  const [websitesError, setWebsitesError] = useState<string>();
+  const [exceptionsError, setExceptionsError] = useState<string>();
+
+  const entries = kind === "website-app" ? initialBlockEntries(websitesText, exceptionsText) : [];
 
   async function handleSubmit() {
     const trimmedName = name.trim();
+    const initialEntries = kind === "website-app" ? initialBlockEntries(websitesText, exceptionsText) : [];
+
     setNameError(undefined);
+    setWebsitesError(undefined);
+    setExceptionsError(undefined);
 
     if (!trimmedName) {
       setNameError("Enter a block name.");
@@ -26,6 +41,17 @@ export function CreateBlockForm({ onSuccess }: CreateBlockFormProps) {
     if (/[\r\n\0]/.test(trimmedName)) {
       setNameError("Block names cannot contain line breaks or null characters.");
       return;
+    }
+
+    for (const entry of initialEntries) {
+      try {
+        buildAddEntryArgs(trimmedName, entry.kind, entry.entry);
+      } catch (error) {
+        const message = formatCliError(error, 180);
+        if (entry.kind === "website") setWebsitesError(message);
+        else setExceptionsError(message);
+        return;
+      }
     }
 
     try {
@@ -41,24 +67,80 @@ export function CreateBlockForm({ onSuccess }: CreateBlockFormProps) {
       return;
     }
 
-    const result = await executeCli({
-      args: buildCreateBlockArgs(trimmedName, kind),
-      workingTitle: `Creating ${trimmedName}…`,
-      successTitle: `Created ${trimmedName}`,
-      verification: { type: "presence", blockName: trimmedName, expectedKind: creationBlockKind(kind) },
-      onSuccess: () => onSuccess?.(),
+    const toast = await showToast({
+      style: Toast.Style.Animated,
+      title: `Creating ${trimmedName}…`,
     });
 
-    if (result) pop();
+    try {
+      await runColdTurkey(buildCreateBlockArgs(trimmedName, kind));
+      await waitForBlockPresence(trimmedName, creationBlockKind(kind));
+
+      const failures: EntryFailure[] = [];
+      let successCount = 0;
+
+      for (const [index, entry] of initialEntries.entries()) {
+        toast.title = `Adding ${index + 1} of ${initialEntries.length}…`;
+        toast.message = `${entryLabel(entry.kind)}: ${entry.entry}`;
+
+        try {
+          await runColdTurkey(buildAddEntryArgs(trimmedName, entry.kind, entry.entry));
+          successCount += 1;
+        } catch (error) {
+          failures.push({ ...entry, error });
+        }
+      }
+
+      if (failures.length > 0) {
+        const firstFailure = failures[0];
+        const additionalFailures = failures.length - 1;
+
+        toast.style = Toast.Style.Failure;
+        toast.title = `Created ${trimmedName}; ${successCount}/${initialEntries.length} entries added`;
+        toast.message = [
+          `${entryLabel(firstFailure.kind)} “${firstFailure.entry}”: ${formatCliError(firstFailure.error, 180)}`,
+          additionalFailures > 0
+            ? `${additionalFailures} more ${additionalFailures === 1 ? "entry" : "entries"} failed.`
+            : undefined,
+          "Open the new block’s Add Websites or Exceptions action to retry.",
+        ]
+          .filter(Boolean)
+          .join(" ");
+        await refreshParent(onSuccess);
+        pop();
+        return;
+      }
+
+      toast.style = Toast.Style.Success;
+      toast.title =
+        initialEntries.length > 0 ? `Created ${trimmedName} with initial entries` : `Created ${trimmedName}`;
+      toast.message =
+        initialEntries.length > 0
+          ? `${summarizeEntryCounts(initialEntries)} added. Cold Turkey has no CLI command to read entries back.`
+          : `Confirmed in ${creationKindLabel(kind)} blocks`;
+      await refreshParent(onSuccess);
+      pop();
+    } catch (error) {
+      applyCliFailureToast(toast, error, "Could not verify block creation");
+    }
   }
 
   return (
     <Form
-      navigationTitle="Create Cold Turkey Block"
+      navigationTitle="Create Block"
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Create Block" icon={Icon.Plus} onSubmit={handleSubmit} />
-          <Action title="Open Extension Preferences" icon={Icon.Cog} onAction={openExtensionPreferences} />
+          <Action.SubmitForm
+            title={
+              kind !== "website-app"
+                ? "Create Device Block"
+                : entries.length > 0
+                  ? "Create Block with Initial Contents"
+                  : "Create Empty Block"
+            }
+            icon={Icon.Plus}
+            onSubmit={handleSubmit}
+          />
         </ActionPanel>
       }
     >
@@ -87,16 +169,64 @@ export function CreateBlockForm({ onSuccess }: CreateBlockFormProps) {
         <Form.Dropdown.Item value="device-shut-down" title="Device Block — Shut Down" icon={Icon.Power} />
       </Form.Dropdown>
 
-      {kind !== "website-app" ? (
+      {kind === "website-app" ? (
+        <>
+          <Form.Separator />
+          <Form.Description
+            title="Initial Contents"
+            text="Optional. Add one website, URL, or Cold Turkey pattern per line now, or leave both lists empty. Applications can be added later in Cold Turkey; its CLI exposes only website and exception entry commands."
+          />
+          <Form.TextArea
+            id="websites"
+            title="Website List (Optional)"
+            placeholder={"youtube.com\nreddit.com/r/all\n*social*"}
+            value={websitesText}
+            onChange={(value) => {
+              setWebsitesText(value);
+              setWebsitesError(undefined);
+            }}
+            error={websitesError}
+            info="Entries are added after the block is created. A URL scheme is not required."
+          />
+          <Form.TextArea
+            id="exceptions"
+            title="Exception List (Optional)"
+            placeholder={"docs.example.com\nexample.com/safe"}
+            value={exceptionsText}
+            onChange={(value) => {
+              setExceptionsText(value);
+              setExceptionsError(undefined);
+            }}
+            error={exceptionsError}
+            info="Exceptions are added immediately after creation, before the new block can be started or locked."
+          />
+        </>
+      ) : (
         <Form.Description
           title="Device Block"
           text="This creates the device block only. It does not activate it. A basic start enables its schedule; a timed start may activate the configured device action immediately."
         />
-      ) : null}
+      )}
     </Form>
   );
 }
 
+async function refreshParent(onSuccess: CreateBlockFormProps["onSuccess"]): Promise<void> {
+  try {
+    await onSuccess?.();
+  } catch (error) {
+    console.error("Could not refresh blocks after creation", error);
+  }
+}
+
 function creationBlockKind(kind: BlockCreationKind): BlockKind {
   return kind === "website-app" ? "website-app" : "device";
+}
+
+function creationKindLabel(kind: BlockCreationKind): string {
+  return kind === "website-app" ? "Website & App" : "Device";
+}
+
+function entryLabel(kind: BlockEntryInput["kind"]): string {
+  return kind === "website" ? "Website" : "Exception";
 }

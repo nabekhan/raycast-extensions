@@ -40,7 +40,10 @@ export interface ExecuteCliOptions {
 }
 
 export async function executeCli(options: ExecuteCliOptions): Promise<CliExecutionResult | undefined> {
-  const toast = await showToast({ style: Toast.Style.Animated, title: options.workingTitle });
+  const toast = await showToast({
+    style: Toast.Style.Animated,
+    title: options.workingTitle,
+  });
 
   try {
     const cli = await runColdTurkey(options.args);
@@ -64,21 +67,28 @@ export async function executeCli(options: ExecuteCliOptions): Promise<CliExecuti
     await options.onSuccess?.(execution);
     return execution;
   } catch (error) {
-    toast.style = Toast.Style.Failure;
-    toast.title =
-      error instanceof ColdTurkeyCliError && error.kind === "verification-failed"
-        ? "Could not verify change"
-        : "Cold Turkey command failed";
-    toast.message = formatCliError(error);
-
-    if (error instanceof ColdTurkeyCliError && ["missing-executable", "permission-denied"].includes(error.kind)) {
-      toast.primaryAction = {
-        title: "Open Extension Preferences",
-        onAction: () => openExtensionPreferences(),
-      };
-    }
-
+    applyCliFailureToast(toast, error);
     return undefined;
+  }
+}
+
+export function applyCliFailureToast(
+  toast: Toast,
+  error: unknown,
+  verificationTitle = "Could not verify change",
+): void {
+  toast.style = Toast.Style.Failure;
+  toast.title =
+    error instanceof ColdTurkeyCliError && error.kind === "verification-failed"
+      ? verificationTitle
+      : "Cold Turkey command failed";
+  toast.message = formatCliError(error);
+
+  if (error instanceof ColdTurkeyCliError && ["missing-executable", "permission-denied"].includes(error.kind)) {
+    toast.primaryAction = {
+      title: "Open Extension Preferences",
+      onAction: () => openExtensionPreferences(),
+    };
   }
 }
 

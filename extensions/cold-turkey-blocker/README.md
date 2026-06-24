@@ -4,12 +4,24 @@ A cross-platform Raycast extension for controlling Cold Turkey Blocker from macO
 
 ## Commands
 
-- **Manage Blocks** — reads `-list-blocks`, recognizes Website & App and Device sections, then checks each returned block with `-status` one at a time.
-- **Start Block** — starts unlocked, uses saved settings (`-as-is`), or applies a timed, password, or random-text lock.
-- **Add Website or Exception** — adds one or many entries, one per line, to Website & App blocks only.
-- **Create Block** — checks for duplicate names, creates a website/app or device block, then confirms it appeared in `-list-blocks`.
-- **Control Break** — starts a delay-break countdown or stops delay/random-text breaks.
-- **CLI Diagnostics** — runs a safe, read-only report using only `-help`, `-list-blocks`, and sequential `-status` checks.
+- **Manage Blocks** — the single default command. It lists every block, checks status, and exposes start, stop, lock, website, creation, and break workflows contextually.
+- **CLI Diagnostics** — a disabled-by-default troubleshooting command that runs a safe, read-only report using only `-help`, `-list-blocks`, and sequential `-status` checks.
+
+The former **Start Block**, **Add to Block**, **Create Block**, and **Control Break** root commands were removed from the manifest because the same workflows are available from **Manage Blocks** with the selected block already filled in.
+
+## Interaction model
+
+**Manage Blocks** is optimized around one selected block:
+
+- **Enter** explicitly **starts unlocked** (or enables a device schedule with no lock), stops an enabled block, or refreshes a block whose status is unknown.
+- **Command–Enter** opens **Start Options** for a disabled block, **Stop with Password** for an enabled block, or read-only **CLI Diagnostics** when status is unknown.
+- **Start Options** is a complete form for **Start Unlocked (No Lock)**, saved settings, timed lock, password lock, or random-text lock. The unlocked choice is intentionally duplicated here so the form never hides a supported start mode.
+- **Add Websites or Exceptions** is one form with a dropdown for the website list or exception list.
+- **Control Break** is one form with a dropdown for starting or stopping the supported break workflows.
+- **Command–N** opens one creation form. Website & App blocks can include optional initial website/pattern and exception lists; leaving both blank creates an empty block. The CLI does not expose application-entry creation, so apps are still added in Cold Turkey itself. Device blocks remain definition-only at creation time.
+- **Command–R** refreshes blocks and statuses.
+- Raycast’s native search matches block names plus status and type keywords such as `enabled`, `disabled`, `website`, and `device`; the extra filter dropdown was removed. Root Search keywords such as `create`, `add`, `exception`, `password`, and `schedule` still lead to **Manage Blocks** after the standalone commands are removed.
+- Unknown status is treated as a diagnostic state: the extension offers refresh and read-only diagnostics instead of guessing whether a mutating command should start or stop the block.
 
 The extension covers these CLI forms:
 
@@ -23,7 +35,6 @@ The extension covers these CLI forms:
 -start "Block Name" -random-text X
 -stop "Block Name"
 -stop "Block Name" -password X
--toggle "Block Name"
 -add-block "Block Name"
 -add "Block Name" -web "URL"
 -add "Block Name" -exception "URL"
@@ -41,8 +52,9 @@ Cold Turkey mutation commands commonly return no text when successful. The exten
 
 - CLI processes are serialized so status probes and mutations cannot overlap.
 - `-list-blocks` is parsed into Website & App and Device sections; section headings are never queried as block names.
-- Start, stop, password-stop, and toggle actions poll `-status` until the expected state is confirmed.
-- Creation is confirmed by polling `-list-blocks`.
+- Start, stop, and password-stop actions poll `-status` until the expected state is confirmed.
+- Creation is confirmed by polling `-list-blocks` before any optional initial entries are added.
+- Initial website and exception entries are added sequentially after creation; exact duplicates and blank lines are ignored. A partial failure identifies the first failed entry and directs the user to retry from **Add Websites or Exceptions**.
 - Output beginning with `Error:` is treated as a failure even if the native process happens to return exit code 0.
 - UTF-8 and UTF-16LE output are supported for macOS and Windows compatibility.
 
@@ -57,8 +69,8 @@ For device blocks, a basic `-start` enables the configured schedule. It does not
 Requirements: Raycast, Cold Turkey Blocker, Node.js, and npm.
 
 ```bash
-unzip cold-turkey-raycast-extension.zip
-cd cold-turkey-raycast-extension
+unzip cold-turkey-raycast-v1.3.2.zip
+cd cold-turkey-raycast-v1.3.2
 npm install
 npm run setup -- YOUR_RAYCAST_USERNAME
 npm run dev
@@ -71,11 +83,11 @@ npm run dev
 The in-place update archive excludes `package.json`, so it can be extracted over the current folder without replacing your Raycast author handle. Then run:
 
 ```bash
-node scripts/upgrade-manifest-v1.1.0.mjs
+node scripts/upgrade-manifest-v1.3.2.mjs
 npm run dev
 ```
 
-The dependencies did not change from 1.0.0, so `npm install` is normally unnecessary for this update.
+The dependencies did not change from 1.2.0, so `npm install` is normally unnecessary for this update.
 
 ### Windows requirement
 
@@ -211,12 +223,12 @@ CT_BLOCKER_PATH="/custom/path/to/Cold Turkey Blocker" npm run ct:report
 
 Safety notes:
 
-* Default report mode only runs read-only commands.
-* Lab mode modifies only controlled test blocks.
-* Device block creation is optional and safe because created device blocks are never started.
-* The report generator never starts device blocks.
-* The report generator never runs timed locks, random-text locks, sign-out actions, or shutdown actions.
-* Repeated lab runs may leave test block definitions in Cold Turkey because the CLI does not expose a delete-block command.
+- Default report mode only runs read-only commands.
+- Lab mode modifies only controlled test blocks.
+- Device block creation is optional and safe because created device blocks are never started.
+- The report generator never starts device blocks.
+- The report generator never runs timed locks, random-text locks, sign-out actions, or shutdown actions.
+- Repeated lab runs may leave test block definitions in Cold Turkey because the CLI does not expose a delete-block command.
 
 ## License
 

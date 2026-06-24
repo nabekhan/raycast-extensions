@@ -1,29 +1,25 @@
-import { Action, ActionPanel, Form, Icon, openExtensionPreferences, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, Form, Icon, useNavigation } from "@raycast/api";
 import { useState } from "react";
-import { BlockField } from "./block-field";
 import { buildStartArgs, type StartMode } from "../lib/command-builders";
 import type { BlockDescriptor } from "../lib/cold-turkey";
 import { blockKindLabel, type BlockKind } from "../lib/cli-output";
 import { confirmPotentialLock, executeCli } from "../lib/ui";
 
+type StartOptionMode = StartMode;
+
 interface StartBlockFormProps {
-  initialBlockName?: string;
-  fixedBlockName?: string;
-  fixedBlockKind?: BlockKind;
+  blockName: string;
+  blockKind: BlockKind;
+  initialMode?: StartOptionMode;
   onSuccess?: () => void | Promise<void>;
 }
 
-export function StartBlockForm({ initialBlockName, fixedBlockName, fixedBlockKind, onSuccess }: StartBlockFormProps) {
+export function StartBlockForm({ blockName, blockKind, initialMode = "as-is", onSuccess }: StartBlockFormProps) {
   const { pop } = useNavigation();
-  const [blockName, setBlockName] = useState(fixedBlockName ?? initialBlockName ?? "");
-  const [selectedBlock, setSelectedBlock] = useState<BlockDescriptor | undefined>(
-    fixedBlockName ? { name: fixedBlockName, kind: fixedBlockKind ?? "unknown" } : undefined,
-  );
-  const [mode, setMode] = useState<StartMode>("unlocked");
+  const [mode, setMode] = useState<StartOptionMode>(initialMode);
   const [minutes, setMinutes] = useState("60");
   const [password, setPassword] = useState("");
   const [randomTextLength, setRandomTextLength] = useState("100");
-  const [blockError, setBlockError] = useState<string>();
   const [minutesError, setMinutesError] = useState<string>();
   const [passwordError, setPasswordError] = useState<string>();
   const [randomTextError, setRandomTextError] = useState<string>();
@@ -31,16 +27,6 @@ export function StartBlockForm({ initialBlockName, fixedBlockName, fixedBlockKin
   async function handleSubmit() {
     clearErrors();
 
-    const selectedName = (fixedBlockName ?? blockName).trim();
-    if (!selectedName) {
-      setBlockError("Select a block.");
-      return;
-    }
-
-    const descriptor: BlockDescriptor = selectedBlock ?? {
-      name: selectedName,
-      kind: fixedBlockKind ?? "unknown",
-    };
     const parsedMinutes = parseWholeNumber(minutes);
     const parsedRandomTextLength = parseWholeNumber(randomTextLength);
 
@@ -62,33 +48,30 @@ export function StartBlockForm({ initialBlockName, fixedBlockName, fixedBlockKin
       return;
     }
 
-    if (mode !== "unlocked") {
-      const confirmed = await confirmPotentialLock(
-        confirmationTitle(mode, selectedName),
-        confirmationMessage(mode, descriptor.kind, parsedMinutes, parsedRandomTextLength),
-      );
-      if (!confirmed) return;
-    }
+    const confirmed =
+      mode === "unlocked" ||
+      (await confirmPotentialLock(
+        confirmationTitle(mode, blockName),
+        confirmationMessage(mode, blockKind, parsedMinutes, parsedRandomTextLength),
+      ));
+    if (!confirmed) return;
 
-    let args: string[];
-    try {
-      args = buildStartArgs({
-        blockName: selectedName,
+    const descriptor: BlockDescriptor = { name: blockName, kind: blockKind };
+    const result = await executeCli({
+      args: buildStartArgs({
+        blockName,
         mode,
         minutes: parsedMinutes,
         password,
         randomTextLength: parsedRandomTextLength,
-      });
-    } catch (error) {
-      setBlockError(error instanceof Error ? error.message : String(error));
-      return;
-    }
-
-    const result = await executeCli({
-      args,
-      workingTitle: `Starting ${selectedName}…`,
-      successTitle: descriptor.kind === "device" ? `Enabled ${selectedName}` : `Started ${selectedName}`,
-      verification: { type: "state", block: descriptor, expectedState: "enabled" },
+      }),
+      workingTitle: `Starting ${blockName}…`,
+      successTitle: blockKind === "device" ? `Enabled ${blockName}` : `Started ${blockName}`,
+      verification: {
+        type: "state",
+        block: descriptor,
+        expectedState: "enabled",
+      },
       onSuccess: () => onSuccess?.(),
     });
 
@@ -96,58 +79,48 @@ export function StartBlockForm({ initialBlockName, fixedBlockName, fixedBlockKin
   }
 
   function clearErrors() {
-    setBlockError(undefined);
     setMinutesError(undefined);
     setPasswordError(undefined);
     setRandomTextError(undefined);
   }
 
-  const selectedKind = selectedBlock?.kind ?? fixedBlockKind ?? "unknown";
-
   return (
     <Form
-      navigationTitle={fixedBlockName ? `Start ${fixedBlockName}` : "Start Cold Turkey Block"}
+      navigationTitle="Start Options"
       actions={
         <ActionPanel>
-          <Action.SubmitForm title={submitTitle(mode, selectedKind)} icon={submitIcon(mode)} onSubmit={handleSubmit} />
-          <Action title="Open Extension Preferences" icon={Icon.Cog} onAction={openExtensionPreferences} />
+          <Action.SubmitForm
+            title={submitTitle(mode)}
+            icon={mode === "unlocked" ? Icon.LockUnlocked : Icon.Lock}
+            onSubmit={handleSubmit}
+          />
         </ActionPanel>
       }
     >
-      {fixedBlockName ? (
-        <>
-          <Form.Description title="Block" text={fixedBlockName} />
-          <Form.Description title="Type" text={blockKindLabel(selectedKind)} />
-        </>
-      ) : (
-        <BlockField
-          value={blockName}
-          onChange={(value) => {
-            setBlockName(value);
-            setBlockError(undefined);
-          }}
-          onBlockChange={setSelectedBlock}
-          preferredValue={initialBlockName}
-          error={blockError}
-        />
-      )}
+      <Form.Description title="Block" text={blockName} />
+      <Form.Description title="Type" text={blockKindLabel(blockKind)} />
 
-      <Form.Dropdown id="mode" title="Start Mode" value={mode} onChange={(value) => setMode(value as StartMode)}>
-        <Form.Dropdown.Item
-          value="unlocked"
-          title={selectedKind === "device" ? "Enable Scheduled Device Block" : "Start Unlocked"}
-          icon={Icon.Play}
-        />
-        <Form.Dropdown.Item value="as-is" title="Start With Saved Settings (-as-is)" icon={Icon.ArrowClockwise} />
-        <Form.Dropdown.Item value="timed" title="Start With Timed Lock" icon={Icon.Clock} />
-        <Form.Dropdown.Item value="password" title="Start With Password Lock (Pro)" icon={Icon.Key} />
-        <Form.Dropdown.Item value="random-text" title="Start With Random Text Lock" icon={Icon.Text} />
+      <Form.Dropdown
+        id="mode"
+        title="Start Option"
+        value={mode}
+        onChange={(value) => setMode(value as StartOptionMode)}
+      >
+        <Form.Dropdown.Item value="unlocked" title="Start Unlocked (No Lock)" icon={Icon.LockUnlocked} />
+        <Form.Dropdown.Item value="as-is" title="Use Saved Settings" icon={Icon.ArrowClockwise} />
+        <Form.Dropdown.Item value="timed" title="Timed Lock" icon={Icon.Clock} />
+        <Form.Dropdown.Item value="password" title="Password Lock" icon={Icon.Key} />
+        <Form.Dropdown.Item value="random-text" title="Random Text Lock" icon={Icon.Text} />
       </Form.Dropdown>
 
-      {selectedKind === "device" && mode === "unlocked" ? (
+      {mode === "unlocked" ? (
         <Form.Description
-          title="Scheduled Device Block"
-          text="This enables the device block's configured schedule. It does not force the lock-screen, sign-out, or shut-down action immediately. Use a timed lock for immediate activation."
+          title="No Lock"
+          text={
+            blockKind === "device"
+              ? "Enables the device block's schedule without applying a lock. It does not immediately trigger the configured device action."
+              : "Starts the block without a lock, so it can be stopped normally later."
+          }
         />
       ) : null}
 
@@ -172,10 +145,10 @@ export function StartBlockForm({ initialBlockName, fixedBlockName, fixedBlockKin
             error={minutesError}
             info="Minutes. Cold Turkey rejects a value shorter than any remaining timed lock."
           />
-          {selectedKind === "device" ? (
+          {blockKind === "device" ? (
             <Form.Description
               title="Immediate Device Action"
-              text="For a device block, -lock may immediately lock the screen, sign out, or shut down, depending on the block's configured type."
+              text="For a device block, a timed lock may immediately lock the screen, sign out, or shut down, depending on the block's configured type."
             />
           ) : null}
         </>
@@ -194,7 +167,7 @@ export function StartBlockForm({ initialBlockName, fixedBlockName, fixedBlockKin
             error={passwordError}
             info="Cold Turkey CLI does not allow spaces or quote characters. The extension does not store this value."
           />
-          {selectedKind === "device" ? (
+          {blockKind === "device" ? (
             <Form.Description
               title="Device Requirement"
               text="Cold Turkey 4.9 only supports password locks for scheduled device blocks."
@@ -217,7 +190,7 @@ export function StartBlockForm({ initialBlockName, fixedBlockName, fixedBlockKin
             error={randomTextError}
             info="Whole number between 1 and 999. This creates a lock, not a random-text break."
           />
-          {selectedKind === "device" ? (
+          {blockKind === "device" ? (
             <Form.Description
               title="Device Requirement"
               text="Cold Turkey 4.9 only supports random-text locks for scheduled device blocks."
@@ -240,32 +213,38 @@ function isValidCliPassword(value: string): boolean {
   return value.length > 0 && !/\s/.test(value) && !value.includes('"') && !value.includes("'");
 }
 
-function submitTitle(mode: StartMode, kind: BlockKind): string {
+function submitTitle(mode: StartOptionMode): string {
   switch (mode) {
     case "unlocked":
-      return kind === "device" ? "Enable Device Block" : "Start Block";
+      return "Start Unlocked";
     case "as-is":
-      return "Start as Configured";
+      return "Start with Saved Settings";
     case "timed":
       return "Start and Lock";
     case "password":
-      return "Start With Password";
+      return "Start with Password";
     case "random-text":
-      return "Start With Random Text";
+      return "Start with Random Text";
   }
 }
 
-function submitIcon(mode: StartMode): Icon {
-  return mode === "unlocked" ? Icon.Play : Icon.Lock;
-}
-
-function confirmationTitle(mode: StartMode, blockName: string): string {
+function confirmationTitle(mode: StartOptionMode, blockName: string): string {
+  if (mode === "unlocked") return `Start ${blockName} unlocked?`;
   if (mode === "as-is") return `Start ${blockName} with saved settings?`;
   return `Start and lock ${blockName}?`;
 }
 
-function confirmationMessage(mode: StartMode, kind: BlockKind, minutes?: number, randomTextLength?: number): string {
+function confirmationMessage(
+  mode: StartOptionMode,
+  kind: BlockKind,
+  minutes?: number,
+  randomTextLength?: number,
+): string {
   switch (mode) {
+    case "unlocked":
+      return kind === "device"
+        ? "The device block schedule will be enabled without applying a lock or immediately triggering its configured action."
+        : "The block will start without a lock and can be stopped normally later.";
     case "as-is":
       return "The saved settings may include a lock that prevents stopping or editing the block until its conditions are met.";
     case "timed":
@@ -276,7 +255,5 @@ function confirmationMessage(mode: StartMode, kind: BlockKind, minutes?: number,
       return "The block will require the supplied password to stop. Keep the password somewhere appropriate.";
     case "random-text":
       return `Stopping or editing may require entering ${randomTextLength ?? "the selected number of"} random characters.`;
-    case "unlocked":
-      return "";
   }
 }

@@ -80,9 +80,10 @@ function getArgValues(name) {
   return values;
 }
 
-const CT_PATH = process.env.CT_BLOCKER_PATH || getArgValue("--ct-path", DEFAULT_CT_PATH);
+const CT_PATH =
+  process.env.CT_BLOCKER_PATH || getArgValue("--ct-path", DEFAULT_CT_PATH);
 const OUT_DIR = path.resolve(
-  getArgValue("--out", path.join(process.cwd(), ".cold-turkey-reports"))
+  getArgValue("--out", path.join(process.cwd(), ".cold-turkey-reports")),
 );
 const RUN_LAB = hasArg("--lab");
 const INCLUDE_PASSWORD_LOCK = hasArg("--include-password-lock");
@@ -92,12 +93,22 @@ const STATUS_ALL = hasArg("--status-all");
 const TEST_BLOCK = getArgValue("--test-block", "Raycast_Report_Test");
 const TEST_PASSWORD = getArgValue("--test-password", "ctreportpass");
 
-const TEST_DEVICE_BLOCK = getArgValue("--test-device-block", `${TEST_BLOCK}_Device`);
-const TEST_SIGNOUT_DEVICE_BLOCK = getArgValue("--test-signout-device-block", `${TEST_BLOCK}_SignOut`);
-const TEST_SHUTDOWN_DEVICE_BLOCK = getArgValue("--test-shutdown-device-block", `${TEST_BLOCK}_ShutDown`);
+const TEST_DEVICE_BLOCK = getArgValue(
+  "--test-device-block",
+  `${TEST_BLOCK}_Device`,
+);
+const TEST_SIGNOUT_DEVICE_BLOCK = getArgValue(
+  "--test-signout-device-block",
+  `${TEST_BLOCK}_SignOut`,
+);
+const TEST_SHUTDOWN_DEVICE_BLOCK = getArgValue(
+  "--test-shutdown-device-block",
+  `${TEST_BLOCK}_ShutDown`,
+);
 
 function usage() {
-  console.log(`
+  console.log(
+    `
 Cold Turkey CLI report generator
 
 Read-only report:
@@ -140,7 +151,8 @@ Safety:
 Output:
   A Markdown report for humans/coders.
   A JSON report with exact raw stdout/stderr and hashes.
-`.trim());
+`.trim(),
+  );
 }
 
 if (hasArg("--help") || hasArg("-h")) {
@@ -149,7 +161,10 @@ if (hasArg("--help") || hasArg("-h")) {
 }
 
 const ESC = String.fromCharCode(27);
-const ANSI_ESCAPE_PATTERN = new RegExp(`${ESC}(?:[@-Z\\\\-_]|\\[[0-?]*[ -/]*[@-~])`, "g");
+const ANSI_ESCAPE_PATTERN = new RegExp(
+  `${ESC}(?:[@-Z\\\\-_]|\\[[0-?]*[ -/]*[@-~])`,
+  "g",
+);
 
 function stripAnsi(text) {
   return String(text || "").replace(ANSI_ESCAPE_PATTERN, "");
@@ -167,7 +182,10 @@ function decodeBuffer(buffer) {
 }
 
 function sha256(text) {
-  return crypto.createHash("sha256").update(text || "", "utf8").digest("hex");
+  return crypto
+    .createHash("sha256")
+    .update(text || "", "utf8")
+    .digest("hex");
 }
 
 function quoteArg(arg) {
@@ -189,7 +207,9 @@ function isDeviceTestBlockName(blockName) {
 
 function assertDeviceBlockCreationIsSafe(argv) {
   if (!INCLUDE_DEVICE_BLOCK_CREATION) {
-    throw new Error(`Refusing to create device block without --include-device-blocks: ${argv.join(" ")}`);
+    throw new Error(
+      `Refusing to create device block without --include-device-blocks: ${argv.join(" ")}`,
+    );
   }
 
   const blockName = argv[1];
@@ -200,15 +220,21 @@ function assertDeviceBlockCreationIsSafe(argv) {
   }
 
   if (variant === "lock-screen" && blockName !== TEST_DEVICE_BLOCK) {
-    throw new Error(`Default device block creation is only allowed for "${TEST_DEVICE_BLOCK}".`);
+    throw new Error(
+      `Default device block creation is only allowed for "${TEST_DEVICE_BLOCK}".`,
+    );
   }
 
   if (variant === "-sign-out" && blockName !== TEST_SIGNOUT_DEVICE_BLOCK) {
-    throw new Error(`Sign-out device block creation is only allowed for "${TEST_SIGNOUT_DEVICE_BLOCK}".`);
+    throw new Error(
+      `Sign-out device block creation is only allowed for "${TEST_SIGNOUT_DEVICE_BLOCK}".`,
+    );
   }
 
   if (variant === "-shut-down" && blockName !== TEST_SHUTDOWN_DEVICE_BLOCK) {
-    throw new Error(`Shut-down device block creation is only allowed for "${TEST_SHUTDOWN_DEVICE_BLOCK}".`);
+    throw new Error(
+      `Shut-down device block creation is only allowed for "${TEST_SHUTDOWN_DEVICE_BLOCK}".`,
+    );
   }
 
   if (!["lock-screen", "-sign-out", "-shut-down"].includes(variant)) {
@@ -224,7 +250,9 @@ function assertAddCommandIsSafe(argv) {
   }
 
   if (blockName !== TEST_BLOCK) {
-    throw new Error(`-add may only modify the test website/app block "${TEST_BLOCK}".`);
+    throw new Error(
+      `-add may only modify the test website/app block "${TEST_BLOCK}".`,
+    );
   }
 
   if (addType !== "-web" && addType !== "-exception") {
@@ -241,7 +269,9 @@ function assertWebsiteBlockCommandIsSafe(argv) {
   const blockName = argv[1];
 
   if (blockName !== TEST_BLOCK) {
-    throw new Error(`${base} may only target the test website/app block "${TEST_BLOCK}".`);
+    throw new Error(
+      `${base} may only target the test website/app block "${TEST_BLOCK}".`,
+    );
   }
 
   if (isDeviceTestBlockName(blockName)) {
@@ -253,7 +283,9 @@ function assertWebsiteBlockCommandIsSafe(argv) {
   }
 
   if (argv.includes("-random-text")) {
-    throw new Error(`Refusing to run random-text lock command: ${argv.join(" ")}`);
+    throw new Error(
+      `Refusing to run random-text lock command: ${argv.join(" ")}`,
+    );
   }
 
   if (argv.includes("-sign-out") || argv.includes("-shut-down")) {
@@ -262,21 +294,29 @@ function assertWebsiteBlockCommandIsSafe(argv) {
 
   if (argv.includes("-password")) {
     if (!INCLUDE_PASSWORD_LOCK) {
-      throw new Error(`Refusing to run password lock command without --include-password-lock`);
+      throw new Error(
+        `Refusing to run password lock command without --include-password-lock`,
+      );
     }
 
     if (blockName !== TEST_BLOCK) {
-      throw new Error(`Password lock testing is only allowed on the test block "${TEST_BLOCK}"`);
+      throw new Error(
+        `Password lock testing is only allowed on the test block "${TEST_BLOCK}"`,
+      );
     }
 
     if (!/^[A-Za-z0-9_-]+$/.test(TEST_PASSWORD)) {
-      throw new Error("Test password must contain only letters, numbers, underscores, or hyphens.");
+      throw new Error(
+        "Test password must contain only letters, numbers, underscores, or hyphens.",
+      );
     }
 
     const passwordIndex = argv.indexOf("-password");
 
     if (passwordIndex === -1 || argv[passwordIndex + 1] !== TEST_PASSWORD) {
-      throw new Error("Password command must use the configured test password.");
+      throw new Error(
+        "Password command must use the configured test password.",
+      );
     }
   }
 
@@ -289,15 +329,19 @@ function assertWebsiteBlockCommandIsSafe(argv) {
     ["-toggle", TEST_BLOCK],
     ["-start-delay-break", TEST_BLOCK],
     ["-stop-delay-break", TEST_BLOCK],
-    ["-stop-random-text-break", TEST_BLOCK]
+    ["-stop-random-text-break", TEST_BLOCK],
   ];
 
   const matchesAllowedShape = allowedShapes.some(
-    (shape) => shape.length === argv.length && shape.every((value, index) => value === argv[index])
+    (shape) =>
+      shape.length === argv.length &&
+      shape.every((value, index) => value === argv[index]),
   );
 
   if (!matchesAllowedShape) {
-    throw new Error(`Unexpected website/app lab command shape: ${argv.join(" ")}`);
+    throw new Error(
+      `Unexpected website/app lab command shape: ${argv.join(" ")}`,
+    );
   }
 }
 
@@ -315,17 +359,21 @@ function assertSafeToRun(argv) {
     "-toggle",
     "-start-delay-break",
     "-stop-delay-break",
-    "-stop-random-text-break"
+    "-stop-random-text-break",
   ]);
 
   if (alwaysSafe.has(base)) return;
 
   if (!RUN_LAB) {
-    throw new Error(`Refusing to run non-read-only command outside --lab mode: ${argv.join(" ")}`);
+    throw new Error(
+      `Refusing to run non-read-only command outside --lab mode: ${argv.join(" ")}`,
+    );
   }
 
   if (!labSafe.has(base)) {
-    throw new Error(`Refusing to run unsupported lab command: ${argv.join(" ")}`);
+    throw new Error(
+      `Refusing to run unsupported lab command: ${argv.join(" ")}`,
+    );
   }
 
   if (base === "-add-device-block") {
@@ -340,7 +388,9 @@ function assertSafeToRun(argv) {
 
   if (base === "-add-block") {
     if (argv.length !== 2 || argv[1] !== TEST_BLOCK) {
-      throw new Error(`-add-block may only create the test website/app block "${TEST_BLOCK}".`);
+      throw new Error(
+        `-add-block may only create the test website/app block "${TEST_BLOCK}".`,
+      );
     }
 
     return;
@@ -364,8 +414,8 @@ function runColdTurkey(argv) {
       NO_COLOR: "1",
       CLICOLOR: "0",
       FORCE_COLOR: "0",
-      TERM: "dumb"
-    }
+      TERM: "dumb",
+    },
   });
 
   const endNs = process.hrtime.bigint();
@@ -390,7 +440,7 @@ function runColdTurkey(argv) {
     stderrClean,
     stdoutHash: sha256(stdoutRaw),
     stderrHash: sha256(stderrRaw),
-    combinedHash: sha256(`${stdoutRaw}\n${stderrRaw}`)
+    combinedHash: sha256(`${stdoutRaw}\n${stderrRaw}`),
   };
 }
 
@@ -426,15 +476,15 @@ function parseHelpSignatures(text) {
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => /^-[A-Za-z0-9-]+(?:\s|$)/.test(line))
-        .map((line) => line.replace(/[ \t]+/g, " "))
-    )
+        .map((line) => line.replace(/[ \t]+/g, " ")),
+    ),
   ).sort();
 }
 
 function addSkipped(skipped, command, reason) {
   skipped.push({
     command,
-    reason
+    reason,
   });
 }
 
@@ -466,13 +516,27 @@ function generateReport() {
   if (RUN_LAB) {
     commands.push(runColdTurkey(["-add-block", TEST_BLOCK]));
     commands.push(runColdTurkey(["-add", TEST_BLOCK, "-web", "example.com"]));
-    commands.push(runColdTurkey(["-add", TEST_BLOCK, "-exception", "example.com/safe"]));
+    commands.push(
+      runColdTurkey(["-add", TEST_BLOCK, "-exception", "example.com/safe"]),
+    );
     commands.push(runColdTurkey(["-status", TEST_BLOCK]));
 
     if (INCLUDE_DEVICE_BLOCK_CREATION) {
       commands.push(runColdTurkey(["-add-device-block", TEST_DEVICE_BLOCK]));
-      commands.push(runColdTurkey(["-add-device-block", TEST_SIGNOUT_DEVICE_BLOCK, "-sign-out"]));
-      commands.push(runColdTurkey(["-add-device-block", TEST_SHUTDOWN_DEVICE_BLOCK, "-shut-down"]));
+      commands.push(
+        runColdTurkey([
+          "-add-device-block",
+          TEST_SIGNOUT_DEVICE_BLOCK,
+          "-sign-out",
+        ]),
+      );
+      commands.push(
+        runColdTurkey([
+          "-add-device-block",
+          TEST_SHUTDOWN_DEVICE_BLOCK,
+          "-shut-down",
+        ]),
+      );
 
       commands.push(runColdTurkey(["-list-blocks"]));
 
@@ -501,64 +565,70 @@ function generateReport() {
     commands.push(runColdTurkey(["-stop-random-text-break", TEST_BLOCK]));
 
     if (INCLUDE_PASSWORD_LOCK) {
-      commands.push(runColdTurkey(["-start", TEST_BLOCK, "-password", TEST_PASSWORD]));
+      commands.push(
+        runColdTurkey(["-start", TEST_BLOCK, "-password", TEST_PASSWORD]),
+      );
       commands.push(runColdTurkey(["-status", TEST_BLOCK]));
-      commands.push(runColdTurkey(["-stop", TEST_BLOCK, "-password", TEST_PASSWORD]));
+      commands.push(
+        runColdTurkey(["-stop", TEST_BLOCK, "-password", TEST_PASSWORD]),
+      );
       commands.push(runColdTurkey(["-status", TEST_BLOCK]));
 
       // Safety cleanup attempt, recorded in report.
-      commands.push(runColdTurkey(["-stop", TEST_BLOCK, "-password", TEST_PASSWORD]));
+      commands.push(
+        runColdTurkey(["-stop", TEST_BLOCK, "-password", TEST_PASSWORD]),
+      );
     }
   }
 
   addSkipped(
     skipped,
     `-start "${TEST_BLOCK}" -lock 1`,
-    "Skipped: timed lock can leave the test block locked if behaviour changes."
+    "Skipped: timed lock can leave the test block locked if behaviour changes.",
   );
 
   addSkipped(
     skipped,
     `-start "${TEST_BLOCK}" -random-text 5`,
-    "Skipped: random-text lock is intentionally not automated."
+    "Skipped: random-text lock is intentionally not automated.",
   );
 
   if (!INCLUDE_DEVICE_BLOCK_CREATION) {
     addSkipped(
       skipped,
       `-add-device-block "Block Name"`,
-      "Skipped by default. Use --include-device-blocks to create harmless test device block definitions."
+      "Skipped by default. Use --include-device-blocks to create harmless test device block definitions.",
     );
 
     addSkipped(
       skipped,
       `-add-device-block "Block Name" -sign-out`,
-      "Skipped by default. Use --include-device-blocks to create, but not start, a sign-out test device block."
+      "Skipped by default. Use --include-device-blocks to create, but not start, a sign-out test device block.",
     );
 
     addSkipped(
       skipped,
       `-add-device-block "Block Name" -shut-down`,
-      "Skipped by default. Use --include-device-blocks to create, but not start, a shut-down test device block."
+      "Skipped by default. Use --include-device-blocks to create, but not start, a shut-down test device block.",
     );
   }
 
   addSkipped(
     skipped,
     `-start "Device Block"`,
-    "Skipped: starting a device block can enable a lock screen, sign out, or shut down depending on the block type/settings."
+    "Skipped: starting a device block can enable a lock screen, sign out, or shut down depending on the block type/settings.",
   );
 
   addSkipped(
     skipped,
     `-start "Device Block" -lock X`,
-    "Skipped: starting a device block with -lock can immediately lock, sign out, or shut down the machine depending on block settings."
+    "Skipped: starting a device block with -lock can immediately lock, sign out, or shut down the machine depending on block settings.",
   );
 
   addSkipped(
     skipped,
     `-start "Block Name" -random-text X`,
-    "Skipped: random-text locks are intentionally not automated."
+    "Skipped: random-text locks are intentionally not automated.",
   );
 
   return {
@@ -577,14 +647,14 @@ function generateReport() {
       testWebsiteAppBlock: TEST_BLOCK,
       testDeviceBlock: TEST_DEVICE_BLOCK,
       testSignOutDeviceBlock: TEST_SIGNOUT_DEVICE_BLOCK,
-      testShutdownDeviceBlock: TEST_SHUTDOWN_DEVICE_BLOCK
+      testShutdownDeviceBlock: TEST_SHUTDOWN_DEVICE_BLOCK,
     },
     safetyNote:
       "This report records raw CLI behaviour. It does not infer semantic success/failure from stdout/stderr.",
     helpSignatures,
     parsedBlocks,
     commands,
-    skipped
+    skipped,
   };
 }
 
@@ -604,8 +674,12 @@ function renderMarkdown(report) {
   lines.push("- It does not interpret stdout/stderr as success or failure.");
   lines.push("- Default mode is read-only.");
   lines.push("- Lab mode modifies only a harmless website/app test block.");
-  lines.push("- Device block creation is optional and safe because created device blocks are never started.");
-  lines.push("- Device block starts, timed locks, random-text locks, sign-out actions, and shut-down actions are never executed.");
+  lines.push(
+    "- Device block creation is optional and safe because created device blocks are never started.",
+  );
+  lines.push(
+    "- Device block starts, timed locks, random-text locks, sign-out actions, and shut-down actions are never executed.",
+  );
   lines.push("");
   lines.push("## Mode");
   lines.push("");
@@ -617,7 +691,9 @@ function renderMarkdown(report) {
   lines.push("");
 
   if (report.helpSignatures.length === 0) {
-    lines.push("_No command signatures parsed. Check raw `-help` output below._");
+    lines.push(
+      "_No command signatures parsed. Check raw `-help` output below._",
+    );
   } else {
     for (const signature of report.helpSignatures) {
       lines.push(`- \`${signature}\``);
@@ -698,5 +774,7 @@ fs.writeFileSync(mdPath, renderMarkdown(report) + "\n");
 console.log(`Wrote Markdown report: ${mdPath}`);
 console.log(`Wrote JSON report:     ${jsonPath}`);
 console.log("");
-console.log("Share the Markdown report with whoever is implementing against the CLI.");
+console.log(
+  "Share the Markdown report with whoever is implementing against the CLI.",
+);
 console.log("Keep the JSON report for exact raw stdout/stderr and hashes.");
