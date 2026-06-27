@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## [Initial Release] - {PR_MERGE_DATE}
 
 - Removed the separate **Stop with Password** action from enabled blocks.
 - The normal stop action now attempts `-stop` first and opens the password form only when Cold Turkey reports `Invalid number of parameters to unlock password lock.`
 - Incorrect passwords are now shown as an inline form error so the password can be corrected and submitted again.
+- Renamed the root command to **Manage Cold Turkey**, kept diagnostics inside that command, and added an **Open Cold Turkey** action.
+- Confirmed direct device schedule starts, relaxed password argument handling, and made CLI parsing more defensive.
 
 ## 1.3.2 — 2026-06-24
 

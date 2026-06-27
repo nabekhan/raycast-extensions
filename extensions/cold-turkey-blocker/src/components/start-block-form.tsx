@@ -36,7 +36,7 @@ export function StartBlockForm({ blockName, blockKind, initialMode = "as-is", on
     }
 
     if (mode === "password" && !isValidCliPassword(password)) {
-      setPasswordError("Use a non-empty password without spaces or quote characters.");
+      setPasswordError("Use a non-empty password without null characters.");
       return;
     }
 
@@ -49,7 +49,7 @@ export function StartBlockForm({ blockName, blockKind, initialMode = "as-is", on
     }
 
     const confirmed =
-      mode === "unlocked" ||
+      (mode === "unlocked" && blockKind !== "device") ||
       (await confirmPotentialLock(
         confirmationTitle(mode, blockName),
         confirmationMessage(mode, blockKind, parsedMinutes, parsedRandomTextLength),
@@ -118,7 +118,7 @@ export function StartBlockForm({ blockName, blockKind, initialMode = "as-is", on
           title="No Lock"
           text={
             blockKind === "device"
-              ? "Enables the device block's schedule without applying a lock. It does not immediately trigger the configured device action."
+              ? "Enables the device block's schedule without applying a lock. Depending on Cold Turkey's configuration, this may trigger the configured device action."
               : "Starts the block without a lock, so it can be stopped normally later."
           }
         />
@@ -165,7 +165,7 @@ export function StartBlockForm({ blockName, blockKind, initialMode = "as-is", on
               setPasswordError(undefined);
             }}
             error={passwordError}
-            info="Cold Turkey CLI does not allow spaces or quote characters. The extension does not store this value."
+            info="The password is passed as one process argument and is not stored by the extension."
           />
           {blockKind === "device" ? (
             <Form.Description
@@ -210,7 +210,7 @@ function parseWholeNumber(value: string): number | undefined {
 }
 
 function isValidCliPassword(value: string): boolean {
-  return value.length > 0 && !/\s/.test(value) && !value.includes('"') && !value.includes("'");
+  return value.length > 0 && !value.includes("\0");
 }
 
 function submitTitle(mode: StartOptionMode): string {
@@ -243,7 +243,7 @@ function confirmationMessage(
   switch (mode) {
     case "unlocked":
       return kind === "device"
-        ? "The device block schedule will be enabled without applying a lock or immediately triggering its configured action."
+        ? "The device block schedule will be enabled without applying a lock. Depending on Cold Turkey's configuration, this may trigger its device action."
         : "The block will start without a lock and can be stopped normally later.";
     case "as-is":
       return "The saved settings may include a lock that prevents stopping or editing the block until its conditions are met.";

@@ -18,9 +18,9 @@ import { StopPasswordForm } from "./components/stop-password-form";
 import { useBlocksWithStatus } from "./hooks/use-blocks";
 import { getBlockMenuPolicy, type BlockPrimaryAction, type BlockSecondaryAction } from "./lib/block-menu";
 import { buildStartArgs, buildStopArgs } from "./lib/command-builders";
-import type { BlockInfo } from "./lib/cold-turkey";
+import { getExecutablePath, type BlockInfo } from "./lib/cold-turkey";
 import { blockKindLabel, classifyStopPasswordError, compactCliOutput, type BlockState } from "./lib/cli-output";
-import { cliErrorText, executeCli, formatCliError } from "./lib/ui";
+import { cliErrorText, confirmPotentialLock, executeCli, formatCliError } from "./lib/ui";
 
 type Revalidate = () => void | Promise<unknown>;
 
@@ -72,6 +72,7 @@ export default function ManageBlocksCommand() {
               <ActionPanel>
                 <Action title="Retry" icon={Icon.ArrowClockwise} onAction={revalidate} />
                 <Action.Push title="Open CLI Diagnostics" icon={Icon.Terminal} target={<CliDiagnosticsCommand />} />
+                <OpenColdTurkeyAction />
                 <Action title="Open Extension Preferences" icon={Icon.Cog} onAction={openExtensionPreferences} />
               </ActionPanel>
             ) : (
@@ -82,6 +83,7 @@ export default function ManageBlocksCommand() {
                   target={<CreateBlockForm onSuccess={revalidateAsVoid(revalidate)} />}
                 />
                 <Action title="Refresh Blocks" icon={Icon.ArrowClockwise} onAction={revalidate} />
+                <OpenColdTurkeyAction />
               </ActionPanel>
             )
           }
@@ -99,6 +101,7 @@ export default function ManageBlocksCommand() {
                 target={<CreateBlockForm onSuccess={revalidateAsVoid(revalidate)} />}
               />
               <Action title="Refresh Blocks" icon={Icon.ArrowClockwise} onAction={revalidate} />
+              <OpenColdTurkeyAction />
             </ActionPanel>
           }
         />
@@ -127,6 +130,17 @@ function BlockListItem({ block, revalidate }: { block: BlockInfo; revalidate: Re
   const refresh = revalidateAsVoid(revalidate);
 
   async function startUnlocked() {
+    if (
+      isDevice &&
+      !(await confirmPotentialLock(
+        `Enable schedule for ${block.name}?`,
+        "This enables the device block schedule and may activate its configured lock-screen, sign-out, or shut-down action.",
+        "Enable Schedule",
+      ))
+    ) {
+      return;
+    }
+
     await executeCli({
       args: buildStartArgs({ blockName: block.name, mode: "unlocked" }),
       workingTitle: isDevice ? `Enabling schedule for ${block.name}…` : `Starting ${block.name}…`,
@@ -225,6 +239,10 @@ function BlockListItem({ block, revalidate }: { block: BlockInfo; revalidate: Re
               />
             ) : null}
           </ActionPanel.Section>
+
+          <ActionPanel.Section title="Cold Turkey">
+            <OpenColdTurkeyAction />
+          </ActionPanel.Section>
         </ActionPanel>
       }
     />
@@ -291,6 +309,16 @@ function revalidateAsVoid(revalidate: Revalidate): () => Promise<void> {
   return async () => {
     await revalidate();
   };
+}
+
+function OpenColdTurkeyAction() {
+  return <Action.Open title="Open Cold Turkey" icon={Icon.AppWindow} target={coldTurkeyOpenTarget()} />;
+}
+
+function coldTurkeyOpenTarget(): string {
+  const executablePath = getExecutablePath();
+  const appIndex = process.platform === "darwin" ? executablePath.toLowerCase().indexOf(".app/") : -1;
+  return appIndex >= 0 ? executablePath.slice(0, appIndex + ".app".length) : executablePath;
 }
 
 function blockSearchKeywords(block: BlockInfo): string[] {

@@ -26,12 +26,6 @@ const DEFAULT_EXECUTABLES = {
   win32: "C:\\Program Files\\Cold Turkey\\Cold Turkey Blocker.exe",
 } as const;
 
-export interface ExtensionPreferences {
-  executablePath: string;
-  commandTimeoutMs?: string;
-  confirmLockingActions?: boolean;
-}
-
 export interface CliResult {
   stdout: string;
   stderr: string;
@@ -83,8 +77,8 @@ export class ColdTurkeyCliError extends Error {
 let cliQueue: Promise<void> = Promise.resolve();
 let lastCommandFinishedAt = 0;
 
-export function getPreferences(): ExtensionPreferences {
-  return getPreferenceValues<ExtensionPreferences>();
+export function getPreferences(): Preferences {
+  return getPreferenceValues<Preferences>();
 }
 
 export function getExecutablePath(): string {
@@ -319,7 +313,7 @@ export async function waitForBlockPresence(
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     lastBlocks = await listBlocks();
     const found = lastBlocks.find((block) => block.name.toLocaleLowerCase() === normalizedName);
-    if (found && (expectedKind === "unknown" || found.kind === expectedKind || found.kind === "unknown")) return found;
+    if (found && (expectedKind === "unknown" || found.kind === expectedKind)) return found;
     if (attempt < attempts - 1) await sleep(Math.min(1_000, 120 * 2 ** attempt));
   }
 
@@ -500,7 +494,7 @@ function hasOnlyBlockSectionHeadings(output: string): boolean {
   return (
     meaningful.length > 0 &&
     meaningful.every((line) =>
-      /^(?:website\s*(?:&|and)\s*app\s+blocks?|website\s+blocks?|device\s+blocks?)$/i.test(line),
+      /^(?:website\s*(?:&|and)\s*app\s+blocks?|website\s+blocks?|device\s+blocks?|(?:.+\s+)?blocks)$/i.test(line),
     )
   );
 }

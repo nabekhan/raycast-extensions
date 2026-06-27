@@ -102,12 +102,13 @@ export function CreateBlockForm({ onSuccess }: CreateBlockFormProps) {
           additionalFailures > 0
             ? `${additionalFailures} more ${additionalFailures === 1 ? "entry" : "entries"} failed.`
             : undefined,
-          "Open the new block’s Add Websites or Exceptions action to retry.",
+          "The failed inputs remain shown here; use Add Websites or Exceptions to retry.",
         ]
           .filter(Boolean)
           .join(" ");
+        setWebsitesError(formatEntryFailures(failures.filter((failure) => failure.kind === "website")));
+        setExceptionsError(formatEntryFailures(failures.filter((failure) => failure.kind === "exception")));
         await refreshParent(onSuccess);
-        pop();
         return;
       }
 
@@ -229,4 +230,9 @@ function creationKindLabel(kind: BlockCreationKind): string {
 
 function entryLabel(kind: BlockEntryInput["kind"]): string {
   return kind === "website" ? "Website" : "Exception";
+}
+
+function formatEntryFailures(failures: EntryFailure[]): string | undefined {
+  if (failures.length === 0) return undefined;
+  return failures.map((failure) => `${failure.entry}: ${formatCliError(failure.error, 120)}`).join("\n");
 }

@@ -5,6 +5,7 @@ import test from "node:test";
 const manifest = JSON.parse(readFileSync("package.json", "utf8")) as {
   commands: Array<{
     name: string;
+    title: string;
     disabledByDefault?: boolean;
     keywords?: string[];
   }>;
@@ -18,30 +19,16 @@ const formSources = [
   "src/components/stop-password-form.tsx",
 ].map((path) => readFileSync(path, "utf8"));
 
-test("keeps Manage Blocks as the only default root command", () => {
-  const defaultCommands = manifest.commands.filter(
-    (command) => !command.disabledByDefault,
-  );
-
-  assert.deepEqual(
-    defaultCommands.map((command) => command.name),
-    ["manage-blocks"],
-  );
+test("keeps Manage Cold Turkey as the only root command", () => {
   assert.deepEqual(
     manifest.commands.map((command) => command.name),
-    ["manage-blocks", "cli-diagnostics"],
+    ["manage-blocks"],
   );
-  assert.equal(
-    manifest.commands.find((command) => command.name === "cli-diagnostics")
-      ?.disabledByDefault,
-    true,
-  );
+  assert.equal(manifest.commands[0]?.title, "Manage Cold Turkey");
 });
 
-test("keeps removed command intents discoverable through Manage Blocks", () => {
-  const keywords =
-    manifest.commands.find((command) => command.name === "manage-blocks")
-      ?.keywords ?? [];
+test("keeps removed command intents discoverable through Manage Cold Turkey", () => {
+  const keywords = manifest.commands.find((command) => command.name === "manage-blocks")?.keywords ?? [];
 
   for (const keyword of [
     "start",
@@ -56,10 +43,7 @@ test("keeps removed command intents discoverable through Manage Blocks", () => {
     "device",
     "schedule",
   ]) {
-    assert.ok(
-      keywords.includes(keyword),
-      `missing command keyword: ${keyword}`,
-    );
+    assert.ok(keywords.includes(keyword), `missing command keyword: ${keyword}`);
   }
 });
 
@@ -70,12 +54,19 @@ test("uses unified forms instead of nested action submenus", () => {
   assert.match(manageBlocksSource, /title="Control Break…"/);
 });
 
+test("provides an in-command launch action for Cold Turkey", () => {
+  assert.match(manageBlocksSource, /Action\.Open title="Open Cold Turkey"/);
+  assert.match(manageBlocksSource, /coldTurkeyOpenTarget/);
+});
+
+test("confirms direct device schedule starts", () => {
+  assert.match(manageBlocksSource, /confirmPotentialLock/);
+  assert.match(manageBlocksSource, /Enable Schedule/);
+});
+
 test("uses native search instead of a redundant filter menu", () => {
   assert.doesNotMatch(manageBlocksSource, /List\.Dropdown/);
-  assert.match(
-    manageBlocksSource,
-    /searchBarPlaceholder="Search by name, status, or block type…"/,
-  );
+  assert.match(manageBlocksSource, /searchBarPlaceholder="Search by name, status, or block type…"/);
   assert.match(manageBlocksSource, /blockSearchKeywords/);
 });
 
@@ -95,7 +86,7 @@ test("makes the unlocked start explicit in both fast and complete paths", () => 
   assert.match(manageBlocksSource, /"Enable Device Schedule \(No Lock\)"/);
   assert.match(source, /value="unlocked"/);
   assert.match(source, /title="Start Unlocked \(No Lock\)"/);
-  assert.match(source, /mode === "unlocked" \|\|/);
+  assert.match(source, /mode === "unlocked" && blockKind !== "device"/);
   assert.match(source, /title="Use Saved Settings"/);
 });
 
@@ -103,10 +94,7 @@ test("requests a stop password only after Cold Turkey reports that it is require
   const source = readFileSync("src/components/stop-password-form.tsx", "utf8");
 
   assert.doesNotMatch(manageBlocksSource, /title=.*Stop with Password/);
-  assert.match(
-    manageBlocksSource,
-    /classifyStopPasswordError\(cliErrorText\(error\)\)/,
-  );
+  assert.match(manageBlocksSource, /classifyStopPasswordError\(cliErrorText\(error\)\)/);
   assert.match(manageBlocksSource, /"password-required"/);
   assert.match(manageBlocksSource, /push\(\s*<StopPasswordForm/);
   assert.match(source, /navigationTitle="Password Required"/);
@@ -126,4 +114,5 @@ test("lets website blocks be created with optional initial contents", () => {
   assert.match(source, /buildAddEntryArgs/);
   assert.match(source, /waitForBlockPresence/);
   assert.match(source, /kind === "website-app"/);
+  assert.doesNotMatch(source, /pop\(\);\n\s*return;\n\s*}\n\s*\n\s*toast\.style = Toast\.Style\.Success/);
 });

@@ -96,8 +96,6 @@ function requireIntegerInRange(value: number | undefined, min: number, max: numb
 function requirePassword(value: string | undefined): string {
   const password = value ?? "";
   if (!password) throw new Error("Password is required.");
-  if (/\s/.test(password) || password.includes('"') || password.includes("'")) {
-    throw new Error("Cold Turkey CLI passwords cannot contain spaces or quote characters.");
-  }
+  if (password.includes("\0")) throw new Error("Password cannot contain null characters.");
   return password;
 }

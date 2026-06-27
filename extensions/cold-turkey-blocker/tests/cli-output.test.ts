@@ -14,36 +14,24 @@ import {
 } from "../src/lib/cli-output";
 
 test("cleans BOM, ANSI sequences, null bytes, and Windows line endings", () => {
-  assert.equal(
-    cleanCliOutput("\uFEFF\u001B[31mHello\u001B[0m\r\nW\0orld\r\n"),
-    "Hello\nWorld",
-  );
+  assert.equal(cleanCliOutput("\uFEFF\u001B[31mHello\u001B[0m\r\nW\0orld\r\n"), "Hello\nWorld");
 });
 
 test("decodes UTF-8 and UTF-16LE CLI output", () => {
   assert.equal(decodeCliOutput(Buffer.from("Enabled\r\n", "utf8")), "Enabled");
   assert.equal(
-    decodeCliOutput(
-      Buffer.concat([
-        Buffer.from([0xff, 0xfe]),
-        Buffer.from("Disabled\r\n", "utf16le"),
-      ]),
-    ),
+    decodeCliOutput(Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from("Disabled\r\n", "utf16le")])),
     "Disabled",
   );
-  assert.equal(
-    decodeCliOutput(Buffer.from("Enabled\r\n", "utf16le")),
-    "Enabled",
-  );
+  assert.equal(decodeCliOutput(Buffer.from("Enabled\r\n", "utf16le")), "Enabled");
 });
 
 test("parses line-oriented block names", () => {
-  assert.deepEqual(
-    parseBlockNames(
-      'Blocks:\r\n1. Deep Work\r\n• "Social Media"\r\n- Frozen Turkey\r\n',
-    ),
-    ["Deep Work", "Social Media", "Frozen Turkey"],
-  );
+  assert.deepEqual(parseBlockNames('Blocks:\r\n1. Deep Work\r\n• "Social Media"\r\n- Frozen Turkey\r\n'), [
+    "Deep Work",
+    "Social Media",
+    "Frozen Turkey",
+  ]);
 });
 
 test("parses Cold Turkey 4.9 block sections without treating headings as blocks", () => {
@@ -69,18 +57,20 @@ test("parses Cold Turkey 4.9 block sections without treating headings as blocks"
   ]);
 });
 
+test("treats unknown block-list headings as sections, not block names", () => {
+  assert.deepEqual(parseBlockList("Website & App Blocks\nDeep Work\nFuture Blocks\nMystery"), [
+    { name: "Deep Work", kind: "website-app" },
+    { name: "Mystery", kind: "unknown" },
+  ]);
+  assert.deepEqual(parseBlockList("Deep Work Block"), [{ name: "Deep Work Block", kind: "unknown" }]);
+});
+
 test("parses names when status is included", () => {
-  assert.deepEqual(
-    parseBlockNames("Deep Work: enabled\nSocial Media - disabled"),
-    ["Deep Work", "Social Media"],
-  );
+  assert.deepEqual(parseBlockNames("Deep Work: enabled\nSocial Media - disabled"), ["Deep Work", "Social Media"]);
 });
 
 test("parses a JSON string array if a future CLI returns one", () => {
-  assert.deepEqual(parseBlockNames('["Deep Work", "Social Media"]'), [
-    "Deep Work",
-    "Social Media",
-  ]);
+  assert.deepEqual(parseBlockNames('["Deep Work", "Social Media"]'), ["Deep Work", "Social Media"]);
 });
 
 test("returns an empty list for no-blocks output", () => {
@@ -89,24 +79,14 @@ test("returns an empty list for no-blocks output", () => {
 
 test("recognizes CLI help output", () => {
   assert.equal(
-    looksLikeHelpOutput(
-      '-start "Block Name"\nStarts the specified block.\n-list-blocks\nDisplays all blocks.',
-    ),
+    looksLikeHelpOutput('-start "Block Name"\nStarts the specified block.\n-list-blocks\nDisplays all blocks.'),
     true,
   );
 });
 
 test("recognizes semantic CLI errors even if a process exits successfully", () => {
-  assert.equal(
-    looksLikeCliError(
-      "Error: Invalid block name. This block name is already used.",
-    ),
-    true,
-  );
-  assert.equal(
-    looksLikeCliError("=> Error: A lock is already set for this block."),
-    true,
-  );
+  assert.equal(looksLikeCliError("Error: Invalid block name. This block name is already used."), true);
+  assert.equal(looksLikeCliError("=> Error: A lock is already set for this block."), true);
   assert.equal(
     extractCliError("=> Error: A lock is already set for this block."),
     "Error: A lock is already set for this block.",
@@ -116,19 +96,14 @@ test("recognizes semantic CLI errors even if a process exits successfully", () =
 
 test("classifies password-stop failures reported by Cold Turkey", () => {
   assert.equal(
-    classifyStopPasswordError(
-      "Error: Invalid number of parameters to unlock password lock.",
-    ),
+    classifyStopPasswordError("Error: Invalid number of parameters to unlock password lock."),
     "password-required",
   );
-  assert.equal(
-    classifyStopPasswordError("=> Error: Invalid password provided."),
-    "invalid-password",
-  );
-  assert.equal(
-    classifyStopPasswordError("Error: This block cannot be stopped yet."),
-    undefined,
-  );
+  assert.equal(classifyStopPasswordError("=> Error: Invalid password provided."), "invalid-password");
+  assert.equal(classifyStopPasswordError("Error: Wrong password."), "invalid-password");
+  assert.equal(classifyStopPasswordError("Error: Password incorrect."), "invalid-password");
+  assert.equal(classifyStopPasswordError("Error: Password required."), "password-required");
+  assert.equal(classifyStopPasswordError("Error: This block cannot be stopped yet."), undefined);
 });
 
 test("parses common enabled and disabled status formats", () => {
@@ -138,6 +113,7 @@ test("parses common enabled and disabled status formats", () => {
   assert.equal(parseBlockState("Status: disabled"), "disabled");
   assert.equal(parseBlockState("OFF"), "disabled");
   assert.equal(parseBlockState("something unexpected"), "unknown");
+  assert.equal(parseBlockState("Disabled\nScheduler note enabled"), "disabled");
 });
 
 test("compacts long output", () => {

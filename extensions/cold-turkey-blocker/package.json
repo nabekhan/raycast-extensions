@@ -24,9 +24,9 @@
   "commands": [
     {
       "name": "manage-blocks",
-      "title": "Manage Blocks",
+      "title": "Manage Cold Turkey",
       "subtitle": "Cold Turkey Blocker",
-      "description": "Search blocks and start unlocked, stop, lock, edit, create with optional contents, or control breaks from one contextual interface.",
+      "description": "Search Cold Turkey blocks and start, stop, lock, edit, create, or control breaks from one contextual interface.",
       "mode": "view",
       "keywords": [
         "start",
@@ -42,14 +42,6 @@
         "device",
         "schedule"
       ]
-    },
-    {
-      "name": "cli-diagnostics",
-      "title": "CLI Diagnostics",
-      "subtitle": "Cold Turkey Blocker",
-      "description": "Run safe, read-only CLI help, block-list, and sequential status diagnostics.",
-      "mode": "view",
-      "disabledByDefault": true
     }
   ],
   "preferences": [

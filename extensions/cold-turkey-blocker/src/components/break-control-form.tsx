@@ -17,7 +17,8 @@ export function BreakControlForm({ blockName, initialAction = "start-delay", onS
     const result = await executeCli({
       args: buildBreakArgs(blockName, action),
       workingTitle: `${breakActionTitle(action)}…`,
-      successTitle: breakSuccessTitle(action, blockName),
+      successTitle: `Sent ${breakActionTitle(action)} for ${blockName}`,
+      successMessage: "Cold Turkey exited cleanly, but its CLI cannot verify break state.",
       onSuccess,
     });
 
@@ -62,16 +63,5 @@ function breakActionTitle(action: BreakAction): string {
       return "Stop Delay Break";
     case "stop-random-text":
       return "Stop Random Text Break";
-  }
-}
-
-function breakSuccessTitle(action: BreakAction, blockName: string): string {
-  switch (action) {
-    case "start-delay":
-      return `Started delay break for ${blockName}`;
-    case "stop-delay":
-      return `Stopped delay break for ${blockName}`;
-    case "stop-random-text":
-      return `Stopped random text break for ${blockName}`;
   }
 }

@@ -21,8 +21,8 @@ export function StopPasswordForm({ blockName, blockKind, onSuccess }: StopPasswo
   async function handleSubmit() {
     setPasswordError(undefined);
 
-    if (!password || /\s/.test(password) || password.includes('"') || password.includes("'")) {
-      setPasswordError("Use the block password without spaces or quote characters.");
+    if (!password || password.includes("\0")) {
+      setPasswordError("Use a non-empty password without null characters.");
       return;
     }
 

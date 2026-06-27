@@ -70,11 +70,19 @@ export function extractCliError(value: string): string | undefined {
 export function classifyStopPasswordError(value: string): StopPasswordError | undefined {
   const output = cleanCliOutput(value);
 
-  if (/\binvalid\s+number\s+of\s+parameters\s+to\s+unlock\s+(?:a\s+)?password\s+lock\b/i.test(output)) {
+  if (
+    /\binvalid\s+number\s+of\s+parameters\s+to\s+unlock\s+(?:a\s+)?password\s+lock\b/i.test(output) ||
+    /\b(?:password\s+(?:is\s+)?(?:required|missing)|(?:requires?|needs)\s+(?:a\s+)?password|(?:missing|no)\s+password)\b/i.test(
+      output,
+    )
+  ) {
     return "password-required";
   }
 
-  if (/\binvalid\s+password(?:\s+provided)?\b/i.test(output)) {
+  if (
+    /\b(?:invalid|wrong|incorrect)\s+password\b/i.test(output) ||
+    /\bpassword\s+(?:is\s+|was\s+)?(?:invalid|wrong|incorrect)\b/i.test(output)
+  ) {
     return "invalid-password";
   }
 
@@ -137,13 +145,13 @@ export function parseBlockState(value: string): BlockState {
     if (/^(?:disabled|inactive|off|stopped|false)$/.test(line)) return "disabled";
     if (/^(?:enabled|active|on|started|true)$/.test(line)) return "enabled";
 
-    const explicit = line.match(/(?:status\s*[:=-]\s*|\bis\s+)(enabled|disabled)\b/);
+    const explicit = line.match(/^(?:status|state)\s*[:=-]\s*(enabled|disabled)$/);
     if (explicit?.[1] === "enabled") return "enabled";
     if (explicit?.[1] === "disabled") return "disabled";
 
-    const trailing = line.match(/\b(enabled|disabled)\s*$/);
-    if (trailing?.[1] === "enabled") return "enabled";
-    if (trailing?.[1] === "disabled") return "disabled";
+    const named = line.match(/^.+\s+is\s+(enabled|disabled)$/);
+    if (named?.[1] === "enabled") return "enabled";
+    if (named?.[1] === "disabled") return "disabled";
   }
 
   return "unknown";
@@ -197,12 +205,13 @@ function parseJsonBlockList(output: string): ParsedBlock[] | undefined {
   }
 }
 
-function parseSectionHeading(value: string): Exclude<BlockKind, "unknown"> | undefined {
+function parseSectionHeading(value: string): BlockKind | undefined {
   const heading = value.replace(/[:\s]+$/, "").trim();
   if (/^website\s*(?:&|and)\s*app\s+blocks?$/i.test(heading) || /^website\s+blocks?$/i.test(heading)) {
     return "website-app";
   }
   if (/^device\s+blocks?$/i.test(heading)) return "device";
+  if (/^(?:.+\s+)?blocks$/i.test(heading)) return "unknown";
   return undefined;
 }
 
